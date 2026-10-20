@@ -1,0 +1,29 @@
+[package]
+name = "edgeway-core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+authors = ["Rafe Uddaraj <m.rafeuddaraj@gmail.com>"]
+license = "MIT"
+description = "Portable networking, security and input-routing engine behind Edgeway."
+repository = "https://github.com/rafeuddaraj/edgeway"
+publish = false
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+blake2 = "0.10"
+getrandom = "0.2"
+libc = "0.2"
+nanoserde = { version = "0.2", default-features = false, features = ["json", "std"] }
+snow = { version = "0.10", default-features = false, features = ["use-chacha20poly1305", "use-blake2", "use-curve25519", "use-getrandom"] }
+spake2 = "0.4"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+debug = false

@@ -1,0 +1,12 @@
+# Build output
+/core/target/
+/platform/macos/.build/
+/build/
+/dist/
+
+# Editors and OS
+.DS_Store
+.swiftpm/
+*.xcodeproj/xcuserdata/
+.vscode/
+.idea/
