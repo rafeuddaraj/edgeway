@@ -46,7 +46,8 @@ if [[ $# -ge 1 ]]; then
   [[ -f "$zip" ]] || die "no such file: $zip"
 else
   say "Finding the latest Edgeway release…"
-  api="https://api.github.com/repos/$REPO/releases/latest"
+  # Newest release first, including previews (releases/latest skips those).
+  api="https://api.github.com/repos/$REPO/releases?per_page=5"
   url="$(curl -fsSL "$api" | grep -o "\"browser_download_url\": *\"[^\"]*-$flavor\.zip\"" | head -1 | sed 's/.*"\(https[^"]*\)"/\1/')"
   [[ -n "$url" ]] || die "no $flavor download found in the latest release of $REPO"
   say "Downloading ${url##*/}…"
