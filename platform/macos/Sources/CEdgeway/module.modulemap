@@ -1,0 +1,5 @@
+module CEdgeway [system] {
+    header "../../../../core/include/edgeway.h"
+    link "edgeway_core"
+    export *
+}

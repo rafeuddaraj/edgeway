@@ -519,6 +519,10 @@ impl Inner {
         self.epoch.elapsed().as_millis() as u64
     }
 
+    fn now_us(&self) -> u64 {
+        self.epoch.elapsed().as_micros() as u64
+    }
+
     fn notify(&self) {
         let (m, cv) = &self.wake;
         *lock(m) += 1;
@@ -648,10 +652,16 @@ impl Inner {
                     if f.fingerprint == self.identity.id().fingerprint() {
                         return;
                     }
+                    if !nearby.iter().any(|n| n.fingerprint == f.fingerprint) {
+                        ew_log!("found \"{}\" at {}:{}", f.instance, f.host, f.port);
+                    }
                     nearby.retain(|n| n.instance != f.instance && n.fingerprint != f.fingerprint);
                     nearby.push(f);
                 }
-                discovery::Event::Lost { instance } => nearby.retain(|n| n.instance != instance),
+                discovery::Event::Lost { instance } => {
+                    ew_log!("lost \"{instance}\"");
+                    nearby.retain(|n| n.instance != instance)
+                }
             }
         }
         self.notify();
@@ -1112,7 +1122,7 @@ impl Inner {
         match msg {
             Message::Ping { t } => self.send(remote, Message::Pong { t }),
             Message::Pong { t } => {
-                let rtt = self.now_ms().saturating_sub(t) as f32;
+                let rtt = self.now_us().saturating_sub(t) as f32 / 1000.0;
                 if let Some(st) = lock(&self.peers).get_mut(remote) {
                     st.rtt_ms = Some(rtt);
                 }
@@ -1209,13 +1219,13 @@ impl Inner {
                 self.wait(None);
                 continue;
             }
-            let now = self.now_ms();
+            let (now, stamp) = (self.now_ms(), self.now_us());
             for (tx, stream, last) in sessions {
                 if now.saturating_sub(last) > HEARTBEAT_TIMEOUT_MS {
                     ew_log!("peer stopped responding");
                     let _ = stream.shutdown(Shutdown::Both);
                 } else {
-                    let _ = tx.send(Message::Ping { t: now });
+                    let _ = tx.send(Message::Ping { t: stamp });
                 }
             }
             self.wait(Some(HEARTBEAT_INTERVAL));
