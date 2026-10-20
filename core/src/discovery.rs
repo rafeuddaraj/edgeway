@@ -66,7 +66,8 @@ pub fn txt_value(record: &[u8], key: &str) -> Option<String> {
     None
 }
 
-fn platform_from_label(label: Option<&str>) -> Platform {
+/// Platform from the `p` TXT value.
+pub fn platform_from_label(label: Option<&str>) -> Platform {
     match label {
         Some("macos") => Platform::MacOS,
         Some("windows") => Platform::Windows,
@@ -354,7 +355,11 @@ mod mac {
             let mut pollfds: Vec<libc::pollfd> = Vec::with_capacity(ops.len() + 1);
             pollfds.push(libc::pollfd { fd: wake_fd, events: libc::POLLIN, revents: 0 });
             for op in &ops {
-                pollfds.push(libc::pollfd { fd: unsafe { DNSServiceRefSockFD(op.sd) }, events: libc::POLLIN, revents: 0 });
+                pollfds.push(libc::pollfd {
+                    fd: unsafe { DNSServiceRefSockFD(op.sd) },
+                    events: libc::POLLIN,
+                    revents: 0,
+                });
             }
             let rc = unsafe { libc::poll(pollfds.as_mut_ptr(), pollfds.len() as libc::nfds_t, -1) };
             if rc < 0 {

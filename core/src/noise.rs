@@ -51,9 +51,7 @@ pub struct Handshake {
 }
 
 fn builder(identity: &Identity) -> Result<snow::Builder<'_>, snow::Error> {
-    snow::Builder::new(NOISE_PATTERN.parse()?)
-        .local_private_key(identity.private_key())?
-        .prologue(NOISE_PROLOGUE)
+    snow::Builder::new(NOISE_PATTERN.parse()?).local_private_key(identity.private_key())?.prologue(NOISE_PROLOGUE)
 }
 
 fn finish(hs: snow::HandshakeState) -> io::Result<Handshake> {

@@ -9,7 +9,8 @@
 #
 # Needs: Xcode Command Line Tools and Rust (https://rustup.rs). Xcode itself
 # is not required. Set EDGEWAY_SIGN_IDENTITY to a Developer ID to sign for
-# distribution; by default the app is signed ad hoc for local use.
+# distribution. Otherwise it uses "Edgeway Local Signing" when present
+# (scripts/create-signing-identity.sh), or an ad hoc signature.
 #
 # Copyright (c) 2026 Rafe Uddaraj. MIT License.
 
@@ -97,7 +98,14 @@ else
 fi
 
 step "Sign"
-codesign --force --options runtime --sign "${EDGEWAY_SIGN_IDENTITY:--}" "$APP"
+# Developer ID for releases; the local identity from create-signing-identity.sh
+# keeps macOS permissions across rebuilds; otherwise ad hoc.
+IDENTITY="${EDGEWAY_SIGN_IDENTITY:-}"
+if [[ -z "$IDENTITY" ]] && security find-identity -v -p codesigning 2>/dev/null | grep -q '"Edgeway Local Signing"'; then
+  IDENTITY="Edgeway Local Signing"
+fi
+codesign --force --options runtime --sign "${IDENTITY:--}" "$APP"
+echo "signed with: ${IDENTITY:-ad hoc}"
 codesign --verify --strict "$APP"
 
 step "Package"

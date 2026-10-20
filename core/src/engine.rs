@@ -42,6 +42,9 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 /// No traffic for this long ends a session and releases every held key.
 const HEARTBEAT_TIMEOUT_MS: u64 = 3500;
 const MAX_PENDING_INBOUND: usize = 8;
+/// Port the controlled device listens on unless it is taken. A fixed default
+/// makes firewall rules easy; discovery means nobody has to type it.
+pub const DEFAULT_PORT: u16 = 47820;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Role {
@@ -105,11 +108,21 @@ pub enum Control {
 #[derive(Clone, Debug, PartialEq)]
 pub enum PairingUi {
     /// Secondary: display this code large and clear.
-    ShowCode { peer: String, code: String },
+    ShowCode {
+        peer: String,
+        code: String,
+    },
     /// Primary: ask the person for the code shown on `peer`.
-    EnterCode { peer: String },
-    Succeeded { peer: String },
-    Failed { peer: String, reason: String },
+    EnterCode {
+        peer: String,
+    },
+    Succeeded {
+        peer: String,
+    },
+    Failed {
+        peer: String,
+        reason: String,
+    },
     /// Dismiss any pairing UI.
     Closed,
 }
@@ -166,11 +179,22 @@ struct PeerState {
 enum PairingSlot {
     Idle,
     /// Secondary is displaying a code.
-    Showing { peer: String, code: String, stream: TcpStream },
+    Showing {
+        peer: String,
+        code: String,
+        stream: TcpStream,
+    },
     /// Primary is waiting for the person to type the code.
-    AwaitingCode { peer: String, tx: Sender<String>, stream: TcpStream },
+    AwaitingCode {
+        peer: String,
+        tx: Sender<String>,
+        stream: TcpStream,
+    },
     /// Pairing messages are in flight.
-    Working { peer: String, stream: Option<TcpStream> },
+    Working {
+        peer: String,
+        stream: Option<TcpStream>,
+    },
 }
 
 /// One authenticated connection before it becomes a session.
@@ -672,7 +696,7 @@ impl Inner {
 
     fn start_listener(self: &Arc<Self>, port_override: Option<u16>) -> io::Result<u16> {
         let saved = lock(&self.config).listen_port;
-        let wanted = port_override.unwrap_or(saved);
+        let wanted = port_override.unwrap_or(if saved == 0 { DEFAULT_PORT } else { saved });
         let bind = |port: u16| -> io::Result<TcpListener> {
             if self.loopback_only {
                 TcpListener::bind(("127.0.0.1", port))
@@ -852,9 +876,9 @@ impl Inner {
         let inner = self.clone();
         thread::spawn(move || {
             let peer = found.instance.clone();
-            let result = inner.connect(&found.host, found.port).and_then(|mut conn| {
-                inner.pair_as_initiator(&mut conn, &peer).map(|_| conn)
-            });
+            let result = inner
+                .connect(&found.host, found.port)
+                .and_then(|mut conn| inner.pair_as_initiator(&mut conn, &peer).map(|_| conn));
             let cancelled = matches!(*lock(&inner.pairing), PairingSlot::Idle);
             *lock(&inner.pairing) = PairingSlot::Idle;
             match result {
@@ -903,9 +927,8 @@ impl Inner {
         }
         self.host.pairing(PairingUi::EnterCode { peer: peer.to_string() });
         self.host.state_changed();
-        let code = rx
-            .recv_timeout(PAIR_CODE_TIMEOUT)
-            .map_err(|_| io::Error::new(io::ErrorKind::Interrupted, "cancelled"))?;
+        let code =
+            rx.recv_timeout(PAIR_CODE_TIMEOUT).map_err(|_| io::Error::new(io::ErrorKind::Interrupted, "cancelled"))?;
         {
             let mut slot = lock(&self.pairing);
             if matches!(*slot, PairingSlot::Idle) {
@@ -965,7 +988,8 @@ impl Inner {
             }
             for (id, host, port) in targets {
                 let inner = self.clone();
-                let _ = thread::Builder::new().name("edgeway-session".into()).spawn(move || inner.dial(id, &host, port));
+                let _ =
+                    thread::Builder::new().name("edgeway-session".into()).spawn(move || inner.dial(id, &host, port));
             }
             self.wait(next.map(|n| n.saturating_duration_since(Instant::now()) + Duration::from_millis(5)));
         }
@@ -1102,17 +1126,12 @@ impl Inner {
             let _ = w.get_ref().shutdown(Shutdown::Both);
         });
 
-        loop {
-            match opener.recv(&mut stream) {
-                Ok(msg) => {
-                    last_rx.store(self.now_ms(), Ordering::SeqCst);
-                    if msg == Message::Bye {
-                        break;
-                    }
-                    self.dispatch(&remote, msg);
-                }
-                Err(_) => break,
+        while let Ok(msg) = opener.recv(&mut stream) {
+            last_rx.store(self.now_ms(), Ordering::SeqCst);
+            if msg == Message::Bye {
+                break;
             }
+            self.dispatch(&remote, msg);
         }
         let _ = stream.shutdown(Shutdown::Both);
         self.session_ended(&remote, id);
@@ -1213,7 +1232,9 @@ impl Inner {
             let sessions: Vec<(Sender<Message>, TcpStream, u64)> = lock(&self.peers)
                 .values()
                 .filter_map(|p| p.session.as_ref())
-                .filter_map(|s| s.stream.try_clone().ok().map(|st| (s.tx.clone(), st, s.last_rx.load(Ordering::SeqCst))))
+                .filter_map(|s| {
+                    s.stream.try_clone().ok().map(|st| (s.tx.clone(), st, s.last_rx.load(Ordering::SeqCst)))
+                })
                 .collect();
             if sessions.is_empty() {
                 self.wait(None);
@@ -1260,7 +1281,9 @@ impl Inner {
                     status: st.map(|s| s.status).unwrap_or_default().label().into(),
                     online: online || st.is_some_and(|s| s.status == Status::Connected),
                     rtt_ms: st.and_then(|s| s.rtt_ms),
-                    error: st.and_then(|s| s.error.clone()).filter(|_| st.is_some_and(|s| s.status != Status::Connected)),
+                    error: st
+                        .and_then(|s| s.error.clone())
+                        .filter(|_| st.is_some_and(|s| s.status != Status::Connected)),
                     placement: t.placement,
                     screens,
                 })

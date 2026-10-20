@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  core:
+    name: Core tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test
+        working-directory: core
+        env:
+          EDGEWAY_QUIET: "1"
+        run: cargo test
+
+  macos-app:
+    name: macOS app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Build Apple silicon
+        run: scripts/build-macos.sh --arch arm64
+      - name: Build Intel
+        run: scripts/build-macos.sh --arch x86_64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Edgeway-macOS
+          path: dist/*.zip

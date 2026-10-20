@@ -4,7 +4,7 @@
 
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -57,9 +57,9 @@ fn screen(x: f32, y: f32, w: f32, h: f32) -> Screen {
     Screen { x, y, w, h, name: "Display".into() }
 }
 
-fn start(role: Role, path: &PathBuf, name: &str) -> (Engine, Receiver<Seen>) {
+fn start(role: Role, path: &Path, name: &str) -> (Engine, Receiver<Seen>) {
     let (h, rx) = host();
-    let mut opts = EngineOptions::new(path.clone(), role, name.into());
+    let mut opts = EngineOptions::new(path.to_path_buf(), role, name.into());
     opts.discovery = false;
     opts.loopback_only = true;
     opts.port = Some(0);
@@ -110,7 +110,11 @@ fn connected(e: &Engine) -> bool {
 
 fn pair(primary: &Engine, p_rx: &Receiver<Seen>, s_rx: &Receiver<Seen>, code: &str) {
     assert!(primary.pair("Mac mini"));
-    expect(s_rx, "code on secondary", |s| matches!(s, Seen::Pairing(PairingUi::ShowCode { code, .. }) if code == "482913"));
+    expect(
+        s_rx,
+        "code on secondary",
+        |s| matches!(s, Seen::Pairing(PairingUi::ShowCode { code, .. }) if code == "482913"),
+    );
     expect(p_rx, "code prompt on primary", |s| matches!(s, Seen::Pairing(PairingUi::EnterCode { .. })));
     assert!(primary.submit_pairing_code(code));
 }

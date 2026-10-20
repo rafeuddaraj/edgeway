@@ -100,11 +100,13 @@ impl Host for FfiHost {
         match *out {
             Output::MouseMove { x, y, dx, dy, buttons, mods } => {
                 ev.kind = EW_EVENT_MOUSE_MOVE;
-                (ev.x, ev.y, ev.dx, ev.dy, ev.buttons, ev.mods) = (x as f64, y as f64, dx as f64, dy as f64, buttons, mods);
+                (ev.x, ev.y, ev.dx, ev.dy, ev.buttons, ev.mods) =
+                    (x as f64, y as f64, dx as f64, dy as f64, buttons, mods);
             }
             Output::Button { button, down, clicks, x, y, mods } => {
                 ev.kind = EW_EVENT_BUTTON;
-                (ev.button, ev.down, ev.clicks, ev.x, ev.y, ev.mods) = (button, down as u8, clicks, x as f64, y as f64, mods);
+                (ev.button, ev.down, ev.clicks, ev.x, ev.y, ev.mods) =
+                    (button, down as u8, clicks, x as f64, y as f64, mods);
             }
             Output::Scroll { dx, dy, lines_x, lines_y, phase, momentum, continuous, mods } => {
                 ev.kind = EW_EVENT_SCROLL;
@@ -168,7 +170,13 @@ unsafe fn screens_arg(screens: *const EwScreen, count: usize) -> Vec<Screen> {
     std::slice::from_raw_parts(screens, count.min(16))
         .iter()
         .filter(|s| s.w >= 1.0 && s.h >= 1.0)
-        .map(|s| Screen { x: s.x as f32, y: s.y as f32, w: s.w as f32, h: s.h as f32, name: str_arg(s.name).to_string() })
+        .map(|s| Screen {
+            x: s.x as f32,
+            y: s.y as f32,
+            w: s.w as f32,
+            h: s.h as f32,
+            name: str_arg(s.name).to_string(),
+        })
         .collect()
 }
 

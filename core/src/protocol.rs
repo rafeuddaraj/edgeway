@@ -155,31 +155,69 @@ pub enum Message {
     Screens(Vec<Screen>),
 
     /// Initiator → responder: please pair with me.
-    PairRequest { name: String, platform: Platform },
+    PairRequest {
+        name: String,
+        platform: Platform,
+    },
     /// Responder → initiator: a code is on my screen; here is my SPAKE2 share.
-    PairChallenge { spake: Vec<u8> },
+    PairChallenge {
+        spake: Vec<u8>,
+    },
     /// Initiator → responder: my SPAKE2 share and key confirmation.
-    PairResponse { spake: Vec<u8>, confirm: [u8; 32] },
+    PairResponse {
+        spake: Vec<u8>,
+        confirm: [u8; 32],
+    },
     /// Responder → initiator: my key confirmation. Pairing is complete.
-    PairConfirm { confirm: [u8; 32] },
+    PairConfirm {
+        confirm: [u8; 32],
+    },
     PairRejected(PairReject),
 
     /// Control moves to the receiver; place the pointer here (receiver coords).
-    Enter { x: f32, y: f32 },
+    Enter {
+        x: f32,
+        y: f32,
+    },
     /// Control leaves the receiver.
     Leave,
     /// Absolute pointer position plus the raw movement that produced it.
-    MouseMove { x: f32, y: f32, dx: f32, dy: f32 },
-    MouseButton { button: u8, down: bool, clicks: u8 },
+    MouseMove {
+        x: f32,
+        y: f32,
+        dx: f32,
+        dy: f32,
+    },
+    MouseButton {
+        button: u8,
+        down: bool,
+        clicks: u8,
+    },
     /// `dx`/`dy` in pixels; `lines_*` for classic wheel mice.
-    Scroll { dx: f32, dy: f32, lines_x: i16, lines_y: i16, phase: u8, momentum: u8, continuous: bool },
+    Scroll {
+        dx: f32,
+        dy: f32,
+        lines_x: i16,
+        lines_y: i16,
+        phase: u8,
+        momentum: u8,
+        continuous: bool,
+    },
     /// `key` is a USB HID usage (keyboard page) or an Edgeway extension code.
-    Key { key: u16, down: bool, repeat: bool },
+    Key {
+        key: u16,
+        down: bool,
+        repeat: bool,
+    },
     /// Release every key and button the receiver is holding.
     ReleaseAll,
 
-    Ping { t: u64 },
-    Pong { t: u64 },
+    Ping {
+        t: u64,
+    },
+    Pong {
+        t: u64,
+    },
     Bye,
 
     Unknown(u8),

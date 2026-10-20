@@ -69,7 +69,8 @@ fn main() {
     };
     let dir = PathBuf::from(args.get(2).cloned().unwrap_or_else(|| "/tmp/edgeway-peer".into()));
     let code = arg(&args, "--code");
-    let name = arg(&args, "--name").unwrap_or_else(|| format!("peer-{}", if role == Role::Primary { "primary" } else { "secondary" }));
+    let name = arg(&args, "--name")
+        .unwrap_or_else(|| format!("peer-{}", if role == Role::Primary { "primary" } else { "secondary" }));
 
     let mut opts = EngineOptions::new(dir, role, name);
     opts.fixed_pairing_code = code.clone();
@@ -96,16 +97,22 @@ fn main() {
         println!("pairing  with {target}");
         let started = Instant::now();
         engine.pair(&target);
-        wait("code prompt", Duration::from_secs(10), || engine.snapshot().pairing.is_some_and(|p| p.state == "enter_code"));
+        wait("code prompt", Duration::from_secs(10), || {
+            engine.snapshot().pairing.is_some_and(|p| p.state == "enter_code")
+        });
         engine.submit_pairing_code(code.as_deref().unwrap_or("000000"));
-        if !wait("connection", Duration::from_secs(15), || engine.snapshot().devices.iter().any(|d| d.status == "connected")) {
+        if !wait("connection", Duration::from_secs(15), || {
+            engine.snapshot().devices.iter().any(|d| d.status == "connected")
+        }) {
             std::process::exit(1);
         }
         println!("paired   in {} ms", started.elapsed().as_millis());
     } else {
         let started = Instant::now();
         engine.network_changed();
-        if !wait("reconnection", Duration::from_secs(15), || engine.snapshot().devices.iter().any(|d| d.status == "connected")) {
+        if !wait("reconnection", Duration::from_secs(15), || {
+            engine.snapshot().devices.iter().any(|d| d.status == "connected")
+        }) {
             std::process::exit(1);
         }
         println!("reconnected in {} ms (no pairing needed)", started.elapsed().as_millis());

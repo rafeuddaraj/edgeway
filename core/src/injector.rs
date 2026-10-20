@@ -12,10 +12,38 @@ use crate::protocol::Message;
 pub enum Output {
     /// Absolute position in this device's coordinates. `buttons` is the set of
     /// held buttons, so the shell can post drags instead of moves.
-    MouseMove { x: f32, y: f32, dx: f32, dy: f32, buttons: u32, mods: u32 },
-    Button { button: u8, down: bool, clicks: u8, x: f32, y: f32, mods: u32 },
-    Scroll { dx: f32, dy: f32, lines_x: i16, lines_y: i16, phase: u8, momentum: u8, continuous: bool, mods: u32 },
-    Key { key: u16, down: bool, repeat: bool, mods: u32 },
+    MouseMove {
+        x: f32,
+        y: f32,
+        dx: f32,
+        dy: f32,
+        buttons: u32,
+        mods: u32,
+    },
+    Button {
+        button: u8,
+        down: bool,
+        clicks: u8,
+        x: f32,
+        y: f32,
+        mods: u32,
+    },
+    Scroll {
+        dx: f32,
+        dy: f32,
+        lines_x: i16,
+        lines_y: i16,
+        phase: u8,
+        momentum: u8,
+        continuous: bool,
+        mods: u32,
+    },
+    Key {
+        key: u16,
+        down: bool,
+        repeat: bool,
+        mods: u32,
+    },
     /// Input is arriving: keep the display awake.
     Wake,
 }
@@ -47,7 +75,7 @@ impl Injector {
     }
 
     fn wake(&mut self, now: Instant, force: bool, out: &mut Vec<Output>) {
-        if force || self.last_wake.map_or(true, |t| now.saturating_duration_since(t) >= WAKE_INTERVAL) {
+        if force || self.last_wake.is_none_or(|t| now.saturating_duration_since(t) >= WAKE_INTERVAL) {
             self.last_wake = Some(now);
             out.push(Output::Wake);
         }
@@ -79,7 +107,14 @@ impl Injector {
                 } else {
                     self.buttons &= !bit;
                 }
-                out.push(Output::Button { button, down, clicks: clicks.max(1), x: self.x, y: self.y, mods: self.mods() });
+                out.push(Output::Button {
+                    button,
+                    down,
+                    clicks: clicks.max(1),
+                    x: self.x,
+                    y: self.y,
+                    mods: self.mods(),
+                });
             }
             Message::Scroll { dx, dy, lines_x, lines_y, phase, momentum, continuous } => {
                 self.wake(now, false, out);

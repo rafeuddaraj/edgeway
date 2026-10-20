@@ -68,7 +68,10 @@ impl Rect {
 
     /// Nearest addressable point inside the rectangle.
     pub fn clamp(&self, p: Point) -> Point {
-        Point { x: p.x.clamp(self.x, (self.max_x() - 1.0).max(self.x)), y: p.y.clamp(self.y, (self.max_y() - 1.0).max(self.y)) }
+        Point {
+            x: p.x.clamp(self.x, (self.max_x() - 1.0).max(self.x)),
+            y: p.y.clamp(self.y, (self.max_y() - 1.0).max(self.y)),
+        }
     }
 
     pub fn translate(&self, dx: f64, dy: f64) -> Rect {
@@ -134,9 +137,7 @@ impl Device {
             .iter()
             .copied()
             .find(|s| s.contains(p))
-            .or_else(|| {
-                self.screens.iter().copied().min_by(|a, b| a.distance_sq(p).total_cmp(&b.distance_sq(p)))
-            })
+            .or_else(|| self.screens.iter().copied().min_by(|a, b| a.distance_sq(p).total_cmp(&b.distance_sq(p))))
             .unwrap_or(Rect::new(0.0, 0.0, 1.0, 1.0))
     }
 
@@ -194,10 +195,31 @@ pub fn default_placement(occupied: &[Rect], local: Rect, size: (f64, f64)) -> Po
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LocalEvent {
     /// `x`/`y`: where the system cursor is now; `dx`/`dy`: raw movement.
-    MouseMove { x: f64, y: f64, dx: f64, dy: f64 },
-    Button { button: u8, down: bool, clicks: u8 },
-    Scroll { dx: f64, dy: f64, lines_x: i16, lines_y: i16, phase: u8, momentum: u8, continuous: bool },
-    Key { key: u16, down: bool, repeat: bool },
+    MouseMove {
+        x: f64,
+        y: f64,
+        dx: f64,
+        dy: f64,
+    },
+    Button {
+        button: u8,
+        down: bool,
+        clicks: u8,
+    },
+    Scroll {
+        dx: f64,
+        dy: f64,
+        lines_x: i16,
+        lines_y: i16,
+        phase: u8,
+        momentum: u8,
+        continuous: bool,
+    },
+    Key {
+        key: u16,
+        down: bool,
+        repeat: bool,
+    },
     /// Gestures and anything else: never delivered locally while away.
     Other,
 }
@@ -212,9 +234,13 @@ pub enum Verdict {
 pub enum Effect {
     Send(PeerId, Message),
     /// Freeze and hide the local cursor here.
-    Freeze { at: Point },
+    Freeze {
+        at: Point,
+    },
     /// Show the local cursor again at this point.
-    Unfreeze { warp_to: Point },
+    Unfreeze {
+        warp_to: Point,
+    },
     /// Input focus changed (`None` = this device).
     Focus(Option<PeerId>),
 }
@@ -491,13 +517,21 @@ impl Switcher {
             candidates.push((Dir::Left, Point::new(s.x - EDGE_PROBE, inside.y), s.x - (p.x + dx)));
         }
         if dx > 0.0 && p.x + dx > s.max_x() - 1.0 {
-            candidates.push((Dir::Right, Point::new(s.max_x() - 1.0 + EDGE_PROBE, inside.y), p.x + dx - (s.max_x() - 1.0)));
+            candidates.push((
+                Dir::Right,
+                Point::new(s.max_x() - 1.0 + EDGE_PROBE, inside.y),
+                p.x + dx - (s.max_x() - 1.0),
+            ));
         }
         if dy < 0.0 && p.y + dy < s.y {
             candidates.push((Dir::Up, Point::new(inside.x, s.y - EDGE_PROBE), s.y - (p.y + dy)));
         }
         if dy > 0.0 && p.y + dy > s.max_y() - 1.0 {
-            candidates.push((Dir::Down, Point::new(inside.x, s.max_y() - 1.0 + EDGE_PROBE), p.y + dy - (s.max_y() - 1.0)));
+            candidates.push((
+                Dir::Down,
+                Point::new(inside.x, s.max_y() - 1.0 + EDGE_PROBE),
+                p.y + dy - (s.max_y() - 1.0),
+            ));
         }
         candidates.into_iter().find_map(|(dir, q, overshoot)| {
             if dev.contains(q) {
@@ -510,7 +544,7 @@ impl Switcher {
     }
 
     fn accumulate(&mut self, dir: Dir, amount: f64, now: Instant) -> bool {
-        let stale = self.push.at.map_or(true, |t| now.saturating_duration_since(t) > PUSH_WINDOW);
+        let stale = self.push.at.is_none_or(|t| now.saturating_duration_since(t) > PUSH_WINDOW);
         if self.push.dir != Some(dir) || stale {
             self.push.amount = 0.0;
         }

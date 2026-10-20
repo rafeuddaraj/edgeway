@@ -34,7 +34,12 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config { version: CURRENT_VERSION, listen_port: 0, edge_resistance: DEFAULT_EDGE_RESISTANCE, trusted: Vec::new() }
+        Config {
+            version: CURRENT_VERSION,
+            listen_port: 0,
+            edge_resistance: DEFAULT_EDGE_RESISTANCE,
+            trusted: Vec::new(),
+        }
     }
 }
 
@@ -144,10 +149,7 @@ impl Config {
 
     /// Adds or refreshes a trusted device.
     pub fn trust(&mut self, id: &PeerId, name: &str, platform: Platform) {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
         if let Some(p) = self.peer_mut(id) {
             p.name = name.to_string();
             p.platform = platform.code();
